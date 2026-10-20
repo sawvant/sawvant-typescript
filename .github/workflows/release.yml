@@ -2,14 +2,25 @@ name: Release
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to publish, for example v1.0.1. Skips semantic-release."
+        required: true
+        type: string
 
 permissions:
-  contents: write
-  issues: write
+  contents: read
 
 jobs:
   release:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    outputs:
+      version: ${{ steps.semantic-release.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -17,7 +28,54 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm ci
-      - run: npx semantic-release
+      - run: npm install -g semantic-release @semantic-release/commit-analyzer @semantic-release/release-notes-generator @semantic-release/github @semantic-release/exec
+      # The exec plugin writes version=<x.y.z> to GITHUB_OUTPUT, only when a new release is published.
+      - id: semantic-release
+        run: npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    needs: release
+    # Runs after a new release, or for an existing tag via workflow_dispatch.
+    # Stays off until the repository variable PUBLISH_ENABLED is set to true.
+    if: >-
+      !cancelled() && vars.PUBLISH_ENABLED == 'true' &&
+      (github.event_name == 'workflow_dispatch' || needs.release.outputs.version != '')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Resolve tag and version
+        id: version
+        env:
+          TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || format('v{0}', needs.release.outputs.version) }}
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag must look like v1.2.3, got: $TAG" >&2
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ steps.version.outputs.tag }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      # The generator writes 0.1.0 everywhere; VERSION holds that placeholder.
+      - name: Set package version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          old=$(cat VERSION)
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          sed -i "s/sawvant-typescript-sdk\/${old//./\\.}/sawvant-typescript-sdk\/$VERSION/" src/runtime.ts
+          echo "$VERSION" > VERSION
+      # npm publish runs the prepare script, so dist is rebuilt with the new version.
+      - run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
