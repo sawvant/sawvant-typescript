@@ -80,3 +80,6 @@ jobs:
       # npm publish runs the prepare script, so dist is rebuilt with the new version.
       # Authenticates with the trusted publisher configured on npmjs.com, no token.
       - run: npm publish --access public --provenance
+        env:
+          # Shows the OIDC token exchange in the log when publishing fails.
+          npm_config_loglevel: verbose
