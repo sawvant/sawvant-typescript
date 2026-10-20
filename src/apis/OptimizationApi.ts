@@ -9,11 +9,20 @@
 
 import * as runtime from '../runtime';
 import type {
+  ApiError,
+  BatchAccepted,
+  BatchRequest,
   OptimizeAccepted,
   OptimizeRequest,
   RateLimitError,
 } from '../models/index';
 import {
+    ApiErrorFromJSON,
+    ApiErrorToJSON,
+    BatchAcceptedFromJSON,
+    BatchAcceptedToJSON,
+    BatchRequestFromJSON,
+    BatchRequestToJSON,
     OptimizeAcceptedFromJSON,
     OptimizeAcceptedToJSON,
     OptimizeRequestFromJSON,
@@ -21,6 +30,10 @@ import {
     RateLimitErrorFromJSON,
     RateLimitErrorToJSON,
 } from '../models/index';
+
+export interface CreateBatchOptimizationRequest {
+    batchRequest: BatchRequest;
+}
 
 export interface CreateOptimizationRequest {
     optimizeRequest: OptimizeRequest;
@@ -33,6 +46,22 @@ export interface CreateOptimizationRequest {
  * @interface OptimizationApiInterface
  */
 export interface OptimizationApiInterface {
+    /**
+     * Enqueues an array of optimization requests as individual jobs and returns their IDs immediately. Poll or stream each job separately.  Maximum 50 fast jobs or 10 thorough jobs per batch. Requires a tier with the `batch` feature. 
+     * @summary Submit multiple cutting optimization jobs
+     * @param {BatchRequest} batchRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof OptimizationApiInterface
+     */
+    createBatchOptimizationRaw(requestParameters: CreateBatchOptimizationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BatchAccepted>>;
+
+    /**
+     * Enqueues an array of optimization requests as individual jobs and returns their IDs immediately. Poll or stream each job separately.  Maximum 50 fast jobs or 10 thorough jobs per batch. Requires a tier with the `batch` feature. 
+     * Submit multiple cutting optimization jobs
+     */
+    createBatchOptimization(batchRequest: BatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BatchAccepted>;
+
     /**
      * Validates the request synchronously, then enqueues the job for async processing. Returns 202 with a job ID and URLs for polling/streaming. 
      * @summary Submit a cutting optimization job
@@ -55,6 +84,48 @@ export interface OptimizationApiInterface {
  * 
  */
 export class OptimizationApi extends runtime.BaseAPI implements OptimizationApiInterface {
+
+    /**
+     * Enqueues an array of optimization requests as individual jobs and returns their IDs immediately. Poll or stream each job separately.  Maximum 50 fast jobs or 10 thorough jobs per batch. Requires a tier with the `batch` feature. 
+     * Submit multiple cutting optimization jobs
+     */
+    async createBatchOptimizationRaw(requestParameters: CreateBatchOptimizationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BatchAccepted>> {
+        if (requestParameters['batchRequest'] == null) {
+            throw new runtime.RequiredError(
+                'batchRequest',
+                'Required parameter "batchRequest" was null or undefined when calling createBatchOptimization().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["X-API-Key"] = await this.configuration.apiKey("X-API-Key"); // apiKey authentication
+        }
+
+        const response = await this.request({
+            path: `/v1/optimize/batch`,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: BatchRequestToJSON(requestParameters['batchRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BatchAcceptedFromJSON(jsonValue));
+    }
+
+    /**
+     * Enqueues an array of optimization requests as individual jobs and returns their IDs immediately. Poll or stream each job separately.  Maximum 50 fast jobs or 10 thorough jobs per batch. Requires a tier with the `batch` feature. 
+     * Submit multiple cutting optimization jobs
+     */
+    async createBatchOptimization(batchRequest: BatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BatchAccepted> {
+        const response = await this.createBatchOptimizationRaw({ batchRequest: batchRequest }, initOverrides);
+        return await response.value();
+    }
 
     /**
      * Validates the request synchronously, then enqueues the job for async processing. Returns 202 with a job ID and URLs for polling/streaming. 

@@ -22,6 +22,33 @@ export interface StreamOptions {
   signal?: AbortSignal;
 }
 
+/**
+ * Fetches the full job result via GET /v1/jobs/{id}.
+ *
+ * SSE events don't include the full result to avoid buffer overflow; fetch via REST instead.
+ */
+async function fetchJobResult(
+  baseUrl: string,
+  jobId: string,
+  apiKey: string,
+  signal?: AbortSignal
+): Promise<JobResponse> {
+  const url = `${baseUrl}/v1/jobs/${jobId}`;
+  const response = await fetch(url, {
+    headers: { "X-API-Key": apiKey },
+    signal,
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(
+      `Failed to fetch job result: ${response.status} - ${(body as { error?: string }).error ?? response.statusText}`
+    );
+  }
+
+  return response.json() as Promise<JobResponse>;
+}
+
 export async function* streamJob(
   jobId: string,
   options: StreamOptions
@@ -60,8 +87,22 @@ export async function* streamJob(
         if (line.startsWith("event:")) {
           currentEvent = line.slice(6).trim();
         } else if (line.startsWith("data:")) {
-          const data = JSON.parse(line.slice(5).trim()) as JobResponse;
-          yield { type: currentEvent as StreamEvent["type"], data };
+          const eventType = currentEvent as StreamEvent["type"];
+          const sseData = JSON.parse(line.slice(5).trim()) as JobResponse;
+
+          if (eventType === "completed") {
+            // SSE events don't include the full result to avoid buffer overflow;
+            // fetch the complete job data via REST instead.
+            const fullResult = await fetchJobResult(
+              baseUrl,
+              jobId,
+              options.apiKey,
+              options.signal
+            );
+            yield { type: "completed", data: fullResult };
+          } else {
+            yield { type: eventType, data: sseData };
+          }
         }
       }
     }

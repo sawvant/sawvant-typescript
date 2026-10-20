@@ -54,30 +54,29 @@ if (result.status === 'completed') {
 
 ## SSE Streaming
 
-Stream real-time progress events as the job runs:
+Stream real-time progress events as the job runs with the `streamJob` helper:
 
 ```typescript
-import { JobsApi, Configuration } from '@sawvant/sdk';
+import { streamJob } from '@sawvant/sdk/dist/streaming';
 
-const config = new Configuration({
+for await (const event of streamJob(job.jobId, {
   apiKey: 'sk_your_api_key_here',
-  basePath: 'https://api.sawvant.com',
-});
-
-const api = new JobsApi(config);
-
-for await (const event of api.streamJob({ id: job.id })) {
+  // baseUrl: 'https://api.sawvant.com', // optional
+  // signal: abortController.signal,     // optional
+})) {
   if (event.type === 'progress') {
-    console.log('Progress:', event.data);
+    console.log('Progress:', event.data.progress);
   } else if (event.type === 'completed') {
-    console.log('Done:', event.data);
+    console.log('Done:', event.data.result);
     break;
   } else if (event.type === 'failed') {
-    console.error('Failed:', event.data);
+    console.error('Failed:', event.data.error);
     break;
   }
 }
 ```
+
+When a `completed` event arrives, the SDK fetches the full job via `GET /v1/jobs/{id}` and puts it in the event, so `event.data.result` holds the complete result. The server leaves the result out of stream events to keep them small. Other events are passed on as received.
 
 ## Configuration
 

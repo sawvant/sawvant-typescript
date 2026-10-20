@@ -1,9 +1,20 @@
 /* tslint:disable */
 /* eslint-disable */
+export * from './ApiError';
+export * from './ApiErrorBody';
+export * from './BatchAccepted';
+export * from './BatchJobResult';
+export * from './BatchRequest';
 export * from './Cost';
 export * from './CostTariffs';
 export * from './CutDirection';
+export * from './DemoError';
+export * from './DemoErrorError';
+export * from './DemoLayout';
+export * from './DemoOptimizeResponse';
 export * from './EdgeCorrection';
+export * from './ErrorCode';
+export * from './FieldError';
 export * from './GrainDirection';
 export * from './HealthResponse';
 export * from './JobResponse';

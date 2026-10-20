@@ -46,7 +46,7 @@ export interface Summary {
      */
     wasteArea: number;
     /**
-     * 
+     * IDs of parts the solver could not fit on any available sheet. A grain direction that forbids the only orientation that would fit is a common cause, alongside sheet quantity limits. The rest of the plan is still valid and cuttable.
      * @type {Array<string>}
      * @memberof Summary
      */

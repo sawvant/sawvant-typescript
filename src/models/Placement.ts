@@ -34,31 +34,31 @@ export interface Placement {
      */
     sheetId: string;
     /**
-     * mm from top-left of usable area
+     * mm from the top-left of the usable area, along the sheet's length axis. x + width never exceeds the usable length.
      * @type {number}
      * @memberof Placement
      */
     x: number;
     /**
-     * mm from top-left of usable area
+     * mm from the top-left of the usable area, along the sheet's width axis. y + height never exceeds the usable width.
      * @type {number}
      * @memberof Placement
      */
     y: number;
     /**
-     * Post-edge-banding dimension
+     * Post-edge-banding dimension along the sheet's length axis
      * @type {number}
      * @memberof Placement
      */
     width: number;
     /**
-     * Post-edge-banding dimension
+     * Post-edge-banding dimension along the sheet's width axis
      * @type {number}
      * @memberof Placement
      */
     height: number;
     /**
-     * 
+     * True when the part's length runs along the sheet's width axis, so width is the part's width and height is its length.
      * @type {boolean}
      * @memberof Placement
      */
