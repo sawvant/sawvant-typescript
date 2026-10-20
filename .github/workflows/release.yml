@@ -65,6 +65,8 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
+      # Trusted publishing (OIDC) needs npm 11.5.1 or newer; Node 22 ships npm 10.
+      - run: npm install -g npm@11.21.1
       - run: npm ci
       # The generator writes 0.1.0 everywhere; VERSION holds that placeholder.
       - name: Set package version
@@ -76,6 +78,5 @@ jobs:
           sed -i "s/sawvant-typescript-sdk\/${old//./\\.}/sawvant-typescript-sdk\/$VERSION/" src/runtime.ts
           echo "$VERSION" > VERSION
       # npm publish runs the prepare script, so dist is rebuilt with the new version.
+      # Authenticates with the trusted publisher configured on npmjs.com, no token.
       - run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
